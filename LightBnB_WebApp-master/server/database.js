@@ -22,25 +22,7 @@ const getUserWithEmail = function(email) {
   SELECT * FROM users
   WHERE email = $1;
   `,[`${email}`])
-  .then((res) => {
-    if (res.rows[0]) {
-      return res.rows[0]
-    } else {
-      return null;
-    }
-  })
-  .catch(err => console.error('Error executing query', err.stack))
-    
-  // let user;
-  // for (const userId in users) {
-  //   user = users[userId];
-  //   if (user.email.toLowerCase() === email.toLowerCase()) {
-  //     break;
-  //   } else {
-  //     user = null;
-  //   }
-  // }
-  // return Promise.resolve(user);
+  .then(res => res.rows[0])
 }
 exports.getUserWithEmail = getUserWithEmail;
 
@@ -54,15 +36,7 @@ const getUserWithId = function(id) {
   SELECT * FROM users
   WHERE id = $1;
   `, [`${id}`])
-  .then((res) => {
-    if (res.rows[0]) {
-      return res.rows[0]
-    } else {
-      return null;
-    }
-  })
-  .catch(err => console.error('Error executing query', err.stack))
-  return Promise.resolve(users[id]);
+  .then(res => res.rows[0])
 }
 exports.getUserWithId = getUserWithId;
 
@@ -80,12 +54,6 @@ const addUser =  function(user) {
   RETURNING *;`, values)
   .then(res => res.rows[0])
   .catch(err => console.error('Error executing query', err.stack))
-
-
-  // const userId = Object.keys(users).length + 1;
-  // user.id = userId;
-  // users[userId] = user;
-  // return Promise.resolve(user);
 }
 exports.addUser = addUser;
 
@@ -97,7 +65,19 @@ exports.addUser = addUser;
  * @return {Promise<[{}]>} A promise to the reservations.
  */
 const getAllReservations = function(guest_id, limit = 10) {
-  return getAllProperties(null, 2);
+  const queryString = 
+    `SELECT properties.*, reservations.*, AVG(rating) AS
+    average_rating
+    FROM properties
+    JOIN reservations ON reservations.property_id = properties.id
+    JOIN property_reviews ON property_reviews.property_id = properties.id
+    WHERE reservations.guest_id = $1 AND reservations.end_date < now()::date
+    GROUP BY properties.id, reservations.id
+    ORDER BY reservations.start_date
+    LIMIT $2;`;
+  const values = [`${guest_id}`,limit];
+  return pool.query(queryString, values)
+  .then(res => res.rows)
 }
 exports.getAllReservations = getAllReservations;
 
